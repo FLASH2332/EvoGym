@@ -3,6 +3,7 @@ from typing import List, Optional
 import numpy as np
 from ppo.eval import eval_policy
 from stable_baselines3.common.callbacks import BaseCallback
+from datetime import datetime
 
 class EvalCallback(BaseCallback):
     """
@@ -104,13 +105,20 @@ class EvalCallback(BaseCallback):
             env_name=self.env_name,
             n_evals=self.n_evals,
             n_envs=self.n_envs,
-        )
+        ) # harish make changes here to add rewards for same ppo for different environments
         out = f"[{self.model_save_name}] Mean: {np.mean(rewards):.3}, Std: {np.std(rewards):.3}, Min: {np.min(rewards):.3}, Max: {np.max(rewards):.3}"
         mean_reward = np.mean(rewards).item()
         if mean_reward > self.best_reward:
+            fitnessEnv =  os.path.join(self.model_save_dir,self.model_save_name+self.env_name+'.txt')
+            file = open(fitnessEnv,'a')
+            file.write(f" NEW BEST ({mean_reward:.3} > {self.best_reward:.3}) {str(datetime.now().date())} {str(datetime.now().time())}\n")
+            file.close()
+
             out += f" NEW BEST ({mean_reward:.3} > {self.best_reward:.3})"
             self.best_reward = mean_reward
             self.model.save(os.path.join(self.model_save_dir, self.model_save_name))
         if self.verbose > 0:
             print(out)
+        
+        
         

@@ -1,3 +1,4 @@
+from ast import arg
 import os
 
 import json
@@ -8,7 +9,55 @@ from typing import Optional
 from utils.algo_utils import *
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
+
+from stable_baselines3.common.vec_env import DummyVecEnv
+import gymnasium as gym
+from gymnasium import spaces
+
 import evogym.envs
+
+class NormalizeObsWrapper(gym.ObservationWrapper):
+    def __init__(self, env, target_dim):
+        """
+        Wrapper to normalize and pad observation space to a fixed dimension.
+        :param env: The gym environment to wrap.
+        :param target_dim: The target size of the observation space.
+        """
+        super().__init__(env)
+        self.target_dim = target_dim
+        # Define a unified observation space
+        self.observation_space = spaces.Box(
+            low=-100.0, high=100.0, shape=(target_dim,), dtype=np.float32
+        )
+
+    def observation(self, obs):
+        obs = np.array(obs, dtype=np.float32)
+        padded_obs = np.zeros(self.target_dim, dtype=np.float32)
+        padded_obs[:min(len(obs), self.target_dim)] = obs[:self.target_dim]
+        return padded_obs
+    
+    def pad_obs(self, obs):
+        """
+        Pads or truncates an observation to match the target dimension.
+        """
+        obs = np.array(obs, dtype=np.float32)
+        padded_obs = np.zeros(self.target_dim, dtype=np.float32)
+        padded_obs[:min(len(obs), self.target_dim)] = obs[:self.target_dim]
+        return padded_obs
+
+    def reset(self, **kwargs):
+        """
+        Reset the environment and pad/truncate the returned observation.
+        """
+        obs, info = self.env.reset(**kwargs)
+        return self.pad_obs(obs), info  # Ensure reset returns normalized obs
+
+    def step(self, action):
+        """
+        Step the environment and pad/truncate the returned observation.
+        """
+        obs, reward, done, truncated, info = self.env.step(action)
+        return self.pad_obs(obs), reward, done, truncated, info
 
 def rollout(
     env_name: str,
@@ -18,12 +67,29 @@ def rollout(
     connections: Optional[np.ndarray] = None,
     seed: int = 42,
 ):
+    def make_task_env(env_name, max_obs_dim):
+        """
+        Create a single environment wrapped with NormalizeObsWrapper.
+        """
+        def _init():
+            env = gym.make(
+                env_name,
+                body=body,
+                connections=connections
+            )
+            env = NormalizeObsWrapper(env, target_dim=max_obs_dim)
+            return env
+        return _init
+
+    max_obs_dim = 100
+
     # Parallel environments
-    vec_env = make_vec_env(env_name, n_envs=1, seed=seed, env_kwargs={
-        'body': body,
-        'connections': connections,
-        "render_mode": "human",
-    })
+    # vec_env = make_vec_env(env_name, n_envs=1, seed=seed, env_kwargs={
+    #     'body': body,
+    #     'connections': connections,
+    #     "render_mode": "human",
+    # })
+    vec_env = DummyVecEnv([make_task_env(env_name, max_obs_dim) for i in range(1)])
     
     # Rollout
     reward_sum = 0
@@ -119,7 +185,7 @@ def visualize_codesign(args, exp_name):
             if num_iters == 0:
                 continue
             
-            save_path_controller = os.path.join(EXPERIMENT_PARENT_DIR, exp_name, "generation_" + str(gen_number), "controller", f'{robot_index}.zip')
+            save_path_controller = os.path.join(EXPERIMENT_PARENT_DIR, exp_name, "generation_" + str(gen_number), "controller", f'{robot_index}_{args.env_name}.zip')
             model = PPO.load(save_path_controller)
             rollout(args.env_name, num_iters, model, structure[0], structure[1])
 
@@ -255,3 +321,4 @@ if __name__ == "__main__":
         visualize_ppo(args, exp_name)
     else: # codesign experiment
         visualize_codesign(args, exp_name)
+

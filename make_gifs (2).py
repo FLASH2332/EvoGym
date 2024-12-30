@@ -182,7 +182,7 @@ class Job():
                 for idx, reward in get_exp_gen_data(exp_name, load_dir, gen):
                     robots.append(Robot(
                         body_path = os.path.join(load_dir, exp_name, f"generation_{gen}", "structure", f"{idx}.npz"),
-                        ctrl_path = os.path.join(load_dir, exp_name, f"generation_{gen}", "controller",f"{idx}_{env_name}.zip"),
+                        ctrl_path = os.path.join(load_dir, exp_name, f"generation_{gen}", "controller", f"{idx}_{self.env_names[0]}.zip"),
                         reward = reward,
                         env_name = env_name,
                         exp_name = exp_name if len(self.experiment_names) != 1 else None,
@@ -196,7 +196,7 @@ class Job():
         # make gifs
         for i, robot in zip(ranks, robots):
             save_robot_gif(
-                os.path.join(save_dir, f'{i}_{robot}'),
+                os.path.join(save_dir, f'{robot.env_name}_{i}_{robot}'),
                 robot.env_name,
                 robot.body_path,
                 robot.ctrl_path
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     my_job = Job(
         name = 'test_ga',
         experiment_names= ['test_ga'],
-        env_names = ['Walker-v0','Carrier-v0'],
+        env_names = ['Carrier-v0'],
         ranks = [i for i in range(3)],
         load_dir = exp_root,
         organize_by_experiment=False,

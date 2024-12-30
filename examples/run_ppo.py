@@ -15,8 +15,11 @@ if __name__ == "__main__":
     
     # Args
     parser = argparse.ArgumentParser(description='Arguments for PPO script')
+    parser.add_argument( # harish add two environments (not really required)
+        "--env-name-1", default="Walker-v0", type=str, help="Environment 1 name (default: Walker-v0)"
+    )
     parser.add_argument(
-        "--env-name", default="Walker-v0", type=str, help="Environment name (default: Walker-v0)"
+        "--env-name-2", default="Thrower-v0", type=str, help="Environment 2 name (default: Thrower-v0)"
     )
     parser.add_argument(
         "--save-dir", default="saved_data", type=str, help="Parent directory in which to save data(default: saved_data)"
@@ -41,7 +44,7 @@ if __name__ == "__main__":
         shutil.rmtree(exp_dir)
     model_save_dir = os.path.join(args.save_dir, args.exp_name, "controller")
     structure_save_dir = os.path.join(args.save_dir, args.exp_name, "structure")
-    save_name = f"{args.env_name}"
+    save_name = f"{args.env_name_1 + args.env_name_2}" # harish change save_name from just env_name to concat of both env names
 
     # Get Robot
     robot = WorldObject.from_json(args.robot_path)
@@ -53,7 +56,8 @@ if __name__ == "__main__":
         args=args,
         body=robot.get_structure(),
         connections=robot.get_connections(),
-        env_name=args.env_name,
+        env_name_1=args.env_name_1, # harish add two environment names
+        env_name_2=args.env_name_2,
         model_save_dir=model_save_dir,
         model_save_name=save_name,
     )
@@ -62,7 +66,7 @@ if __name__ == "__main__":
     with open(os.path.join(args.save_dir, args.exp_name, "ppo_result.json"), "w") as f:
         json.dump({
             "best_reward": best_reward,
-            "env_name": args.env_name,
+            "env_name": args.env_name_1 + args.env_name_2, # harish change env_name from just env_name to concat of both env names
         }, f, indent=4)
 
     # Evaluate
@@ -71,7 +75,7 @@ if __name__ == "__main__":
         model=model,
         body=robot.get_structure(),
         connections=robot.get_connections(),
-        env_name=args.env_name,
+        env_name=args.env_name, #harish
         n_evals=1,
         n_envs=1,
         render_mode="human",

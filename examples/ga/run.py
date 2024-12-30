@@ -11,15 +11,17 @@ import evogym.envs
 from evogym import sample_robot, hashable
 import utils.mp_group as mp
 from utils.algo_utils import get_percent_survival_evals, mutate, Structure
+from datetime import datetime
 
 def run_ga(
     args: argparse.Namespace,
 ):
     print()
     
-    exp_name, env_name, pop_size, structure_shape, max_evaluations, num_cores = (
+    exp_name, env_name_1, env_name_2, pop_size, structure_shape, max_evaluations, num_cores = (
         args.exp_name,
-        args.env_name,
+        args.env_name_1, # harish add two environment names
+        args.env_name_2,
         args.pop_size,
         args.structure_shape,
         args.max_evaluations,
@@ -152,18 +154,30 @@ def run_ga(
         for structure in structures:
 
             if structure.is_survivor:
-                save_path_controller_part = os.path.join("saved_data", exp_name, "generation_" + str(generation), "controller",
-                    f"{structure.label}.zip")
-                save_path_controller_part_old = os.path.join("saved_data", exp_name, "generation_" + str(generation-1), "controller",
-                    f"{structure.prev_gen_label}.zip")
+                save_path_controller_part_1 = os.path.join("saved_data", exp_name, "generation_" + str(generation), "controller",
+                    f"{structure.label}_{env_name_1}.zip") # harish add two environments
+                save_path_controller_part_old_1 = os.path.join("saved_data", exp_name, "generation_" + str(generation-1), "controller",
+                    f"{structure.prev_gen_label}_{env_name_1}.zip")
                 
-                print(f'Skipping training for {save_path_controller_part}.\n')
+                print(f'Skipping training for {save_path_controller_part_1}.\n')
                 try:
-                    shutil.copy(save_path_controller_part_old, save_path_controller_part)
+                    shutil.copy(save_path_controller_part_old_1, save_path_controller_part_1)
                 except:
-                    print(f'Error coppying controller for {save_path_controller_part}.\n')
+                    print(f'Error coppying controller for {save_path_controller_part_1}.\n')
+                    
+                    
+                save_path_controller_part_2 = os.path.join("saved_data", exp_name, "generation_" + str(generation), "controller",
+                    f"{structure.label}_{env_name_2}.zip")
+                save_path_controller_part_old_2 = os.path.join("saved_data", exp_name, "generation_" + str(generation-1), "controller",
+                    f"{structure.prev_gen_label}_{env_name_2}.zip")
+                
+                print(f'Skipping training for {save_path_controller_part_2}.\n')
+                try:
+                    shutil.copy(save_path_controller_part_old_2, save_path_controller_part_2)
+                except:
+                    print(f'Error coppying controller for {save_path_controller_part_2}.\n')
             else:
-                ppo_args = (args, structure.body, env_name, save_path_controller, f'{structure.label}', structure.connections)
+                ppo_args = (args, structure.body, env_name_1, env_name_2, save_path_controller, f'{structure.label}', structure.connections) # harish add two environment names doubtful 
                 group.add_job(run_ppo, ppo_args, callback=structure.set_reward)
                 
 
@@ -177,7 +191,19 @@ def run_ga(
         for structure in structures:
             structure.compute_fitness()
 
+        #Saving max fitness for display -- ashwin
         structures = sorted(structures, key=lambda structure: structure.fitness, reverse=True)
+        maxFitStruct = structures[0]
+        fitnessEnv1 = os.path.join("saved_data", exp_name +'.txt') # harish add two environments
+        # fitnessEnv2 = os.path.join("saved_data", exp_name, env_name_2+'.txt')
+        file1 = open(fitnessEnv1,'a')
+        # file2 = open(fitnessEnv2,'a')
+
+        file1.write(str(maxFitStruct.reward) +" "+ str(datetime.now().date())+" "+ str(datetime.now().time())  + "\n")
+        # file2.write(str(maxFitStruct.reward) + str(datetime.now().time()) + "\n")
+        file1.close()
+        # file2.close()
+
 
         #SAVE RANKING TO FILE
         temp_path = os.path.join("saved_data", exp_name, "generation_" + str(generation), "output.txt")
